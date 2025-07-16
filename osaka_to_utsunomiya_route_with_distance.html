@@ -1,0 +1,82 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>大阪から宇都宮までのルート切り替え</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    #map { height: 500px; }
+    .controls { margin: 10px 0; }
+    #distance { margin-top: 10px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>大阪から宇都宮までのルート</h2>
+  <div class="controls">
+    <label><input type="radio" name="route" value="tokyo" checked> 東京経由</label>
+    <label><input type="radio" name="route" value="yokohama"> 横浜経由</label>
+  </div>
+  <div id="map"></div>
+  <div id="distance">総距離: 計算中...</div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([35.0, 135.0], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const routes = {
+      tokyo: [
+        [34.6937, 135.5023], // 大阪
+        [35.6895, 139.6917], // 東京
+        [36.5658, 139.8836]  // 宇都宮
+      ],
+      yokohama: [
+        [34.6937, 135.5023], // 大阪
+        [35.4437, 139.6380], // 横浜
+        [36.5658, 139.8836]  // 宇都宮
+      ]
+    };
+
+    function haversineDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371; // 地球の半径 (km)
+      const toRad = x => x * Math.PI / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function calculateTotalDistance(route) {
+      let total = 0;
+      for (let i = 0; i < route.length - 1; i++) {
+        total += haversineDistance(
+          route[i][0], route[i][1],
+          route[i + 1][0], route[i + 1][1]
+        );
+      }
+      return total.toFixed(2);
+    }
+
+    let polyline = L.polyline(routes.tokyo, { color: 'blue' }).addTo(map);
+    document.getElementById("distance").textContent = "総距離: " + calculateTotalDistance(routes.tokyo) + " km";
+
+    document.querySelectorAll('input[name="route"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        map.removeLayer(polyline);
+        const selectedRoute = routes[e.target.value];
+        polyline = L.polyline(selectedRoute, { color: 'blue' }).addTo(map);
+        map.fitBounds(polyline.getBounds());
+        document.getElementById("distance").textContent = "総距離: " + calculateTotalDistance(selectedRoute) + " km";
+      });
+    });
+
+    map.fitBounds(polyline.getBounds());
+  </script>
+</body>
+</html>
